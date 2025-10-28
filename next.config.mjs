@@ -8,6 +8,9 @@ const nextConfig = {
       },
     ],
   },
+  // Production optimizations
+  swcMinify: true,
+  poweredByHeader: false,
 };
 
 export default nextConfig;
