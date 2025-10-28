@@ -174,20 +174,70 @@ Syncs embeddings for profiles marked as dirty.
 
 ## Deployment
 
-### Deploy to Vercel
+### Deploy to Vercel (Public Web App)
 
-1. Push to GitHub
-2. Import project in Vercel
-3. Add all environment variables (including Service Role key)
-4. Deploy
+This application is configured for **public access** - anyone with the link can search without authentication.
 
-### Set Up Automatic Sync (Optional)
+**Deployment Steps:**
 
-Configure Vercel Cron Job:
-- **Path**: `/api/embeddings/sync`
-- **Schedule**: `*/5 * * * *` (every 5 minutes)
-- **Method**: POST
-- **Body**: `{"limit":50}`
+1. **Push to GitHub**
+   ```bash
+   git push origin main
+   ```
+
+2. **Import in Vercel**
+   - Go to [vercel.com](https://vercel.com)
+   - Click "New Project"
+   - Import your GitHub repository
+
+3. **Configure Environment Variables**
+
+   Add the following environment variables in Vercel Dashboard → Settings → Environment Variables:
+
+   ```
+   SUPABASE_SERVICE_ROLE_KEY=your-service-role-key-here
+   OPENAI_API_KEY=your-openai-api-key-here
+   ```
+
+   **Note**: The `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` are already configured in `vercel.json` and are safe to be public.
+
+4. **Deploy**
+   - Click "Deploy"
+   - Wait for build to complete
+   - Your app will be live at `https://your-project.vercel.app`
+
+5. **Run Database Migration** (One-time setup)
+   - Open Supabase SQL Editor at [Supabase Dashboard](https://supabase.com/dashboard)
+   - Execute the contents of `supabase_migration.sql`
+   - This creates the necessary tables, indexes, and RPC functions
+
+6. **Initial Embedding Backfill** (One-time setup)
+
+   After deployment, run the backfill endpoint to generate embeddings for all profiles:
+
+   ```bash
+   curl -X POST https://your-project.vercel.app/api/embeddings \
+     -H "Content-Type: application/json"
+   ```
+
+   Or use the npm script locally:
+   ```bash
+   npm run embed:all
+   ```
+
+### Set Up Automatic Sync (Recommended)
+
+To keep embeddings up-to-date automatically, configure a Vercel Cron Job:
+
+1. In Vercel Dashboard, go to your project
+2. Navigate to Settings → Cron Jobs
+3. Add a new cron job:
+   - **Path**: `/api/embeddings/sync`
+   - **Schedule**: `*/5 * * * *` (every 5 minutes) or `0 * * * *` (hourly)
+   - **Method**: POST
+   - **Body**: `{"limit":50}`
+
+This will automatically sync embeddings for any profiles that have been updated.
 
 ## Hybrid Search Tuning
 
@@ -201,10 +251,22 @@ Adjust based on user query patterns and preferences.
 
 ## Security Notes
 
-- Service Role key is only used server-side for admin operations
-- RLS is enabled on `singles_form_data` table
-- Direct table access is revoked, only RPC and view access granted
-- All API routes should be protected with authentication in production
+**Public Access Configuration:**
+- This application is designed for **public access** - no authentication required for searching
+- RLS is enabled on `singles_form_data` table with policies allowing anonymous (anon) access
+- The anon key is safe to expose publicly (it's in the client-side code)
+- RPC functions (`match_singles`, `hybrid_search_singles`) are granted to both `anon` and `authenticated` roles
+
+**Server-Side Security:**
+- Service Role key is only used server-side for admin operations (embedding generation)
+- Service Role key is **never** exposed to the client
+- Embedding generation endpoints (`/api/embeddings`, `/api/embeddings/sync`) use Service Role key
+- Direct table access is controlled via RLS policies
+
+**Important:**
+- Only profile data intended for public viewing should be in the database
+- The search view (`singles_search_view`) only exposes safe, public fields
+- Sensitive data should never be stored in searchable fields
 
 ## Troubleshooting
 
