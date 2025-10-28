@@ -397,20 +397,22 @@ ALTER TABLE singles_form_data ENABLE ROW LEVEL SECURITY;
 -- Drop existing policies if they exist
 DROP POLICY IF EXISTS "Allow authenticated users to read singles via view" ON singles_form_data;
 DROP POLICY IF EXISTS "Allow authenticated users to execute RPC functions" ON singles_form_data;
+DROP POLICY IF EXISTS "Allow public access to read singles" ON singles_form_data;
 
--- Policy: Authenticated users can read through the view
-CREATE POLICY "Allow authenticated users to read singles via view"
+-- Policy: Public (anonymous) users can read through the view and RPC functions
+-- This enables the web app to be publicly accessible without authentication
+CREATE POLICY "Allow public access to read singles"
   ON singles_form_data
   FOR SELECT
-  TO authenticated
+  TO anon, authenticated
   USING (true);
 
--- Grant access to the view
-GRANT SELECT ON singles_search_view TO authenticated;
+-- Grant access to the view for both anonymous and authenticated users
+GRANT SELECT ON singles_search_view TO anon, authenticated;
 
--- Grant execute permission on RPC functions
-GRANT EXECUTE ON FUNCTION match_singles TO authenticated;
-GRANT EXECUTE ON FUNCTION hybrid_search_singles TO authenticated;
+-- Grant execute permission on RPC functions to anonymous and authenticated users
+GRANT EXECUTE ON FUNCTION match_singles TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION hybrid_search_singles TO anon, authenticated;
 
 -- ============================================
 -- Initial primary image sync
