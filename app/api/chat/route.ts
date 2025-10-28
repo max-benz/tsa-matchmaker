@@ -3,6 +3,7 @@ import { supabaseServer } from '@/lib/supabaseServer';
 import { openai, embed } from '@/lib/llm';
 
 export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 interface SearchRequest {
   message: string;

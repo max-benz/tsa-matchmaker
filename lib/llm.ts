@@ -1,12 +1,34 @@
 import OpenAI from 'openai';
 
+let openaiInstance: OpenAI | null = null;
+
 /**
- * OpenAI client instance
+ * Get or create OpenAI client instance (lazy-loaded)
+ * This ensures the client is only instantiated at runtime, not during build
+ */
+function getOpenAIClient(): OpenAI {
+  if (!openaiInstance) {
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey) {
+      throw new Error('OPENAI_API_KEY environment variable is not set');
+    }
+    openaiInstance = new OpenAI({ apiKey });
+  }
+  return openaiInstance;
+}
+
+/**
+ * OpenAI client instance (for backwards compatibility)
  * Used for both embeddings and chat completions
  */
-export const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY!,
-});
+export const openai = {
+  get embeddings() {
+    return getOpenAIClient().embeddings;
+  },
+  get chat() {
+    return getOpenAIClient().chat;
+  },
+};
 
 /**
  * Generate embedding for a text string using OpenAI's text-embedding-3-small model
@@ -21,7 +43,8 @@ export async function embed(text: string): Promise<number[]> {
   }
 
   try {
-    const response = await openai.embeddings.create({
+    const client = getOpenAIClient();
+    const response = await client.embeddings.create({
       model: 'text-embedding-3-small',
       input: text,
       encoding_format: 'float',
