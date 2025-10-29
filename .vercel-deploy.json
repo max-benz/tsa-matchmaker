@@ -1,0 +1,6 @@
+{
+  "deployment": {
+    "timestamp": "2025-10-29T12:15:00Z",
+    "note": "This file forces Vercel to deploy from the latest commit"
+  }
+}
