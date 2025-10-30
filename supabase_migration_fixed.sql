@@ -203,17 +203,17 @@ DECLARE
   v_form_data_id INTEGER;
   v_image_url TEXT;
 BEGIN
-  -- Determine the form_data_id based on the operation
+  -- Determine the singles_form_data_id based on the operation
   IF TG_OP = 'DELETE' THEN
-    v_form_data_id := OLD.form_data_id;
+    v_form_data_id := OLD.singles_form_data_id;
   ELSE
-    v_form_data_id := NEW.form_data_id;
+    v_form_data_id := NEW.singles_form_data_id;
   END IF;
 
   -- Get the primary image URL
   SELECT image_url INTO v_image_url
   FROM singles_form_images
-  WHERE form_data_id = v_form_data_id
+  WHERE singles_form_data_id = v_form_data_id
   ORDER BY is_primary DESC, image_order ASC, id ASC
   LIMIT 1;
 
@@ -479,7 +479,7 @@ UPDATE singles_form_data s
 SET primary_image_url = (
   SELECT image_url
   FROM singles_form_images i
-  WHERE i.form_data_id = s.id
+  WHERE i.singles_form_data_id = s.id
   ORDER BY is_primary DESC, image_order ASC, id ASC
   LIMIT 1
 );
