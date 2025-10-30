@@ -1,5 +1,5 @@
 -- ============================================
--- Singles Search - Complete Database Migration
+-- Singles Search - Complete Database Migration (FIXED)
 -- ============================================
 -- This migration augments existing tables:
 -- - singles_form_data
@@ -29,33 +29,13 @@ ADD COLUMN IF NOT EXISTS searchable_text TEXT GENERATED ALWAYS AS (
   COALESCE(notes, '')
 ) STORED;
 
--- Add computed column: content_tsv (tsvector for full-text search)
+-- Add tsvector column for full-text search (updated by trigger)
 ALTER TABLE singles_form_data
-ADD COLUMN IF NOT EXISTS content_tsv TSVECTOR GENERATED ALWAYS AS (
-  to_tsvector('english',
-    COALESCE(first_name, '') || ' ' ||
-    COALESCE(last_name, '') || ' ' ||
-    COALESCE(city, '') || ' ' ||
-    COALESCE(state, '') || ' ' ||
-    COALESCE(country, '') || ' ' ||
-    COALESCE(metropolitan_area, '') || ' ' ||
-    COALESCE(occupation, '') || ' ' ||
-    COALESCE(lifestyle_interests, '') || ' ' ||
-    COALESCE(physical_activities, '') || ' ' ||
-    COALESCE(personal_summary, '') || ' ' ||
-    COALESCE(notes, '')
-  )
-) STORED;
+ADD COLUMN IF NOT EXISTS content_tsv TSVECTOR;
 
--- Add computed column: age_years (computed from date_of_birth)
+-- Add age_years column (updated by trigger)
 ALTER TABLE singles_form_data
-ADD COLUMN IF NOT EXISTS age_years INTEGER GENERATED ALWAYS AS (
-  CASE
-    WHEN date_of_birth IS NOT NULL THEN
-      DATE_PART('year', AGE(CURRENT_DATE, date_of_birth))::INTEGER
-    ELSE NULL
-  END
-) STORED;
+ADD COLUMN IF NOT EXISTS age_years INTEGER;
 
 -- Add embedding column (vector with 1536 dimensions for text-embedding-3-small)
 ALTER TABLE singles_form_data
@@ -74,6 +54,82 @@ ADD COLUMN IF NOT EXISTS embedding_updated_at TIMESTAMPTZ;
 
 ALTER TABLE singles_form_data
 ADD COLUMN IF NOT EXISTS embedding_version INTEGER DEFAULT 0;
+
+-- ============================================
+-- Create triggers to update computed columns
+-- ============================================
+
+-- Trigger function: Update content_tsv
+CREATE OR REPLACE FUNCTION update_content_tsv()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.content_tsv := to_tsvector('english',
+    COALESCE(NEW.first_name, '') || ' ' ||
+    COALESCE(NEW.last_name, '') || ' ' ||
+    COALESCE(NEW.city, '') || ' ' ||
+    COALESCE(NEW.state, '') || ' ' ||
+    COALESCE(NEW.country, '') || ' ' ||
+    COALESCE(NEW.metropolitan_area, '') || ' ' ||
+    COALESCE(NEW.occupation, '') || ' ' ||
+    COALESCE(NEW.lifestyle_interests, '') || ' ' ||
+    COALESCE(NEW.physical_activities, '') || ' ' ||
+    COALESCE(NEW.personal_summary, '') || ' ' ||
+    COALESCE(NEW.notes, '')
+  );
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql IMMUTABLE;
+
+DROP TRIGGER IF EXISTS trigger_update_content_tsv ON singles_form_data;
+CREATE TRIGGER trigger_update_content_tsv
+  BEFORE INSERT OR UPDATE ON singles_form_data
+  FOR EACH ROW
+  EXECUTE FUNCTION update_content_tsv();
+
+-- Trigger function: Update age_years
+CREATE OR REPLACE FUNCTION update_age_years()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF NEW.date_of_birth IS NOT NULL THEN
+    NEW.age_years := DATE_PART('year', AGE(CURRENT_DATE, NEW.date_of_birth))::INTEGER;
+  ELSE
+    NEW.age_years := NULL;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trigger_update_age_years ON singles_form_data;
+CREATE TRIGGER trigger_update_age_years
+  BEFORE INSERT OR UPDATE ON singles_form_data
+  FOR EACH ROW
+  EXECUTE FUNCTION update_age_years();
+
+-- ============================================
+-- Backfill existing rows with content_tsv and age_years
+-- ============================================
+
+UPDATE singles_form_data
+SET
+  content_tsv = to_tsvector('english',
+    COALESCE(first_name, '') || ' ' ||
+    COALESCE(last_name, '') || ' ' ||
+    COALESCE(city, '') || ' ' ||
+    COALESCE(state, '') || ' ' ||
+    COALESCE(country, '') || ' ' ||
+    COALESCE(metropolitan_area, '') || ' ' ||
+    COALESCE(occupation, '') || ' ' ||
+    COALESCE(lifestyle_interests, '') || ' ' ||
+    COALESCE(physical_activities, '') || ' ' ||
+    COALESCE(personal_summary, '') || ' ' ||
+    COALESCE(notes, '')
+  ),
+  age_years = CASE
+    WHEN date_of_birth IS NOT NULL THEN
+      DATE_PART('year', AGE(CURRENT_DATE, date_of_birth))::INTEGER
+    ELSE NULL
+  END
+WHERE content_tsv IS NULL OR age_years IS NULL;
 
 -- ============================================
 -- Create indexes for performance
@@ -147,17 +203,17 @@ DECLARE
   v_form_data_id INTEGER;
   v_image_url TEXT;
 BEGIN
-  -- Determine the form_data_id based on the operation
+  -- Determine the singles_form_data_id based on the operation
   IF TG_OP = 'DELETE' THEN
-    v_form_data_id := OLD.form_data_id;
+    v_form_data_id := OLD.singles_form_data_id;
   ELSE
-    v_form_data_id := NEW.form_data_id;
+    v_form_data_id := NEW.singles_form_data_id;
   END IF;
 
   -- Get the primary image URL
   SELECT image_url INTO v_image_url
   FROM singles_form_images
-  WHERE form_data_id = v_form_data_id
+  WHERE singles_form_data_id = v_form_data_id
   ORDER BY is_primary DESC, image_order ASC, id ASC
   LIMIT 1;
 
@@ -423,7 +479,7 @@ UPDATE singles_form_data s
 SET primary_image_url = (
   SELECT image_url
   FROM singles_form_images i
-  WHERE i.form_data_id = s.id
+  WHERE i.singles_form_data_id = s.id
   ORDER BY is_primary DESC, image_order ASC, id ASC
   LIMIT 1
 );
@@ -432,7 +488,6 @@ SET primary_image_url = (
 -- Migration complete
 -- ============================================
 -- Next steps:
--- 1. Run this migration in Supabase SQL Editor
--- 2. Backfill embeddings using /api/embeddings endpoint
--- 3. Test hybrid search functionality
+-- 1. Backfill embeddings using /api/embeddings endpoint
+-- 2. Test hybrid search functionality
 -- ============================================
