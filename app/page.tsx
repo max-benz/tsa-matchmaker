@@ -124,6 +124,34 @@ export default function Home() {
     }
   };
 
+  const backfillAll = async () => {
+    setSyncing(true);
+    setSyncMsg('Generating embeddings for all profiles... This may take several minutes.');
+
+    try {
+      const response = await fetch('/api/embeddings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      if (!response.ok) {
+        throw new Error('Backfill failed');
+      }
+
+      const data = await response.json();
+      setSyncMsg(
+        data.message || `Successfully generated embeddings for ${data.updated || 0} profiles`
+      );
+    } catch (error) {
+      console.error('Backfill error:', error);
+      setSyncMsg(
+        `Backfill error: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && !loading) {
       search();
@@ -146,11 +174,18 @@ export default function Home() {
             </div>
             <div className="flex gap-2">
               <button
+                onClick={backfillAll}
+                disabled={syncing}
+                className="px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {syncing ? 'Processing...' : 'Generate All Embeddings'}
+              </button>
+              <button
                 onClick={syncNow}
                 disabled={syncing}
                 className="px-4 py-2 border border-gray-300 rounded-xl text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
-                {syncing ? 'Syncing...' : 'Sync Now'}
+                {syncing ? 'Syncing...' : 'Sync Updates'}
               </button>
               <button
                 onClick={reset}
