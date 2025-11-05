@@ -96,6 +96,7 @@ export default function Home() {
           minAge: minAge ? parseInt(minAge) : undefined,
           maxAge: maxAge ? parseInt(maxAge) : undefined,
           state: state || undefined,
+          topK: 200, // Return up to 200 matches for better conversational refinement
           conversationHistory: conversationHistory.map(msg => ({
             role: msg.role,
             content: msg.content,
