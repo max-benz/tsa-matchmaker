@@ -412,7 +412,7 @@ export default function Home() {
 
                                 {/* Status Badge on Image */}
                                 {result.status && (
-                                  <div className={`absolute top-3 right-3 px-3 py-1 rounded-full text-xs font-semibold border ${statusColors.bg} ${statusColors.text} ${statusColors.border}`}>
+                                  <div className={`absolute top-3 left-3 px-3 py-1 rounded-full text-xs font-semibold border ${statusColors.bg} ${statusColors.text} ${statusColors.border}`}>
                                     {result.status}
                                   </div>
                                 )}
