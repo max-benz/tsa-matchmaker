@@ -96,6 +96,7 @@ export default function Home() {
           minAge: minAge ? parseInt(minAge) : undefined,
           maxAge: maxAge ? parseInt(maxAge) : undefined,
           state: state || undefined,
+          topK: 10000, // Return entire database - scales automatically as database grows
           conversationHistory: conversationHistory.map(msg => ({
             role: msg.role,
             content: msg.content,
