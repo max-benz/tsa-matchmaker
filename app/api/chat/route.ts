@@ -32,6 +32,7 @@ interface SearchResult {
   gender: string | null;
   personal_summary: string | null;
   primary_image_url: string | null;
+  status: string | null;
   final_score: number;
 }
 

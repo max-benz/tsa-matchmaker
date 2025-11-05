@@ -14,6 +14,7 @@ type Result = {
   personal_summary: string | null;
   primary_image_url: string | null;
   final_score: number;
+  status?: string | null;
 };
 
 type ChatMessage = {
@@ -25,6 +26,32 @@ type ChatMessage = {
 type ProfileDetails = {
   profile: any;
   images: any[];
+};
+
+// Helper function to get status color
+const getStatusColor = (status: string | null | undefined) => {
+  if (!status) return { bg: 'bg-gray-100', text: 'text-gray-700', border: 'border-gray-300' };
+
+  const statusLower = status.toLowerCase();
+
+  if (statusLower.includes('active') || statusLower.includes('available')) {
+    return { bg: 'bg-green-100', text: 'text-green-800', border: 'border-green-300' };
+  }
+  if (statusLower.includes('pending') || statusLower.includes('review')) {
+    return { bg: 'bg-yellow-100', text: 'text-yellow-800', border: 'border-yellow-300' };
+  }
+  if (statusLower.includes('inactive') || statusLower.includes('unavailable')) {
+    return { bg: 'bg-gray-100', text: 'text-gray-700', border: 'border-gray-300' };
+  }
+  if (statusLower.includes('matched') || statusLower.includes('dating')) {
+    return { bg: 'bg-blue-100', text: 'text-blue-800', border: 'border-blue-300' };
+  }
+  if (statusLower.includes('paused') || statusLower.includes('hold')) {
+    return { bg: 'bg-orange-100', text: 'text-orange-800', border: 'border-orange-300' };
+  }
+
+  // Default
+  return { bg: 'bg-gray-100', text: 'text-gray-700', border: 'border-gray-300' };
 };
 
 export default function Home() {
@@ -359,32 +386,45 @@ export default function Home() {
                             result.last_name?.charAt(0) || ''
                           }.${result.age_years ? ` (${result.age_years})` : ''}`;
 
+                          const statusColors = getStatusColor(result.status);
+
                           return (
                             <div
                               key={result.id}
                               onClick={() => openProfileDetails(result.id)}
                               className="bg-white border border-gray-200 rounded-2xl overflow-hidden hover:shadow-lg transition-shadow cursor-pointer"
                             >
-                              {/* Image */}
-                              {result.primary_image_url ? (
-                                <img
-                                  src={result.primary_image_url}
-                                  alt={nameWithAge}
-                                  className="w-full h-56 object-cover"
-                                />
-                              ) : (
-                                <div className="w-full h-56 bg-gray-200 flex items-center justify-center">
-                                  <span className="text-gray-400 text-sm">
-                                    No image
-                                  </span>
-                                </div>
-                              )}
+                              {/* Image with Status Badge */}
+                              <div className="relative">
+                                {result.primary_image_url ? (
+                                  <img
+                                    src={result.primary_image_url}
+                                    alt={nameWithAge}
+                                    className="w-full h-56 object-cover"
+                                  />
+                                ) : (
+                                  <div className="w-full h-56 bg-gray-200 flex items-center justify-center">
+                                    <span className="text-gray-400 text-sm">
+                                      No image
+                                    </span>
+                                  </div>
+                                )}
+
+                                {/* Status Badge on Image */}
+                                {result.status && (
+                                  <div className={`absolute top-3 right-3 px-3 py-1 rounded-full text-xs font-semibold border ${statusColors.bg} ${statusColors.text} ${statusColors.border}`}>
+                                    {result.status}
+                                  </div>
+                                )}
+                              </div>
 
                               {/* Content */}
                               <div className="p-4">
-                                <h3 className="text-lg font-semibold text-gray-900 mb-1">
-                                  {nameWithAge}
-                                </h3>
+                                <div className="flex items-center justify-between mb-1">
+                                  <h3 className="text-lg font-semibold text-gray-900">
+                                    {nameWithAge}
+                                  </h3>
+                                </div>
                                 <p className="text-sm text-gray-600 mb-2">
                                   {location}
                                 </p>
@@ -461,6 +501,21 @@ export default function Home() {
 
             {/* Modal Content */}
             <div className="p-6">
+              {/* Status Badge - Prominent at Top */}
+              {selectedProfile.profile.status && (
+                <div className="mb-6">
+                  {(() => {
+                    const statusColors = getStatusColor(selectedProfile.profile.status);
+                    return (
+                      <div className={`inline-flex items-center px-4 py-2 rounded-lg text-sm font-semibold border ${statusColors.bg} ${statusColors.text} ${statusColors.border}`}>
+                        <span className="mr-2">●</span>
+                        Status: {selectedProfile.profile.status}
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
+
               {/* Images */}
               {selectedProfile.images && selectedProfile.images.length > 0 && (
                 <div className="mb-8">
