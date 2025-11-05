@@ -19,6 +19,8 @@ interface SearchRequest {
   alpha?: number;
   topK?: number;
   conversationHistory?: ChatMessage[];
+  isRefinement?: boolean;
+  existingResults?: SearchResult[];
 }
 
 interface SearchResult {
@@ -57,44 +59,54 @@ export async function POST(request: NextRequest) {
       alpha = 0.6,
       topK = 10000, // Return entire database - scales automatically as database grows
       conversationHistory = [],
+      isRefinement = false,
+      existingResults = [],
     } = body;
 
-    // Generate embedding for the search query
-    console.log('Generating embedding for query:', message);
-    const queryEmbedding = await embed(message);
+    let searchResults: SearchResult[] = [];
 
-    // Call hybrid search RPC
-    const supabase = supabaseServer();
-    console.log('Executing hybrid search with filters:', {
-      gender,
-      minAge,
-      maxAge,
-      state,
-      alpha,
-      topK,
-    });
+    if (isRefinement && existingResults.length > 0) {
+      // This is a refinement query - use existing results instead of searching database
+      console.log(`Refining ${existingResults.length} existing results with query:`, message);
+      searchResults = existingResults;
+    } else {
+      // This is a new search - query the database
+      console.log('Generating embedding for new search query:', message);
+      const queryEmbedding = await embed(message);
 
-    const { data: results, error: searchError } = await supabase.rpc('hybrid_search_singles', {
-      p_query_text: message,
-      p_query_embedding: JSON.stringify(queryEmbedding),
-      p_alpha: alpha,
-      p_match_count: topK,
-      p_gender: gender || null,
-      p_min_age: minAge || null,
-      p_max_age: maxAge || null,
-      p_state: state || null,
-    });
+      // Call hybrid search RPC
+      const supabase = supabaseServer();
+      console.log('Executing hybrid search with filters:', {
+        gender,
+        minAge,
+        maxAge,
+        state,
+        alpha,
+        topK,
+      });
 
-    if (searchError) {
-      console.error('Supabase search error:', searchError);
-      return NextResponse.json(
-        { error: `Search failed: ${searchError.message}` },
-        { status: 500 }
-      );
+      const { data: results, error: searchError } = await supabase.rpc('hybrid_search_singles', {
+        p_query_text: message,
+        p_query_embedding: JSON.stringify(queryEmbedding),
+        p_alpha: alpha,
+        p_match_count: topK,
+        p_gender: gender || null,
+        p_min_age: minAge || null,
+        p_max_age: maxAge || null,
+        p_state: state || null,
+      });
+
+      if (searchError) {
+        console.error('Supabase search error:', searchError);
+        return NextResponse.json(
+          { error: `Search failed: ${searchError.message}` },
+          { status: 500 }
+        );
+      }
+
+      searchResults = results || [];
+      console.log(`Found ${searchResults.length} results from database search`);
     }
-
-    const searchResults: SearchResult[] = results || [];
-    console.log(`Found ${searchResults.length} results`);
 
     // Format results for LLM
     const formattedResults = searchResults.map((r) => {
@@ -115,17 +127,33 @@ export async function POST(request: NextRequest) {
 
     // Generate LLM summary with conversation history
     console.log('Generating LLM summary');
-    const messages: any[] = [
-      {
-        role: 'system',
-        content: `You are a helpful matchmaking assistant. Analyze search results and provide a concise summary.
+    const systemPrompt = isRefinement
+      ? `You are a helpful matchmaking assistant. The user has refined their previous search query.
+
+Your task: Filter and analyze the existing ${searchResults.length} results based on the user's refinement request.
+
+For refinement queries:
+1. Identify which profiles match the user's new criteria
+2. Explain how you filtered the results
+3. Highlight the best matches from the refined set
+4. Suggest 1-2 ways to further refine or expand
+
+When mentioning specific profiles, cite them as [#id] where id is the profile ID.
+Keep your response conversational and focused on the refinement.`
+      : `You are a helpful matchmaking assistant. Analyze search results and provide a concise summary.
+
 Include:
 1. A brief overview of the results found
 2. Key highlights about the matches
 3. 2-3 specific refinement suggestions to help narrow or expand the search
 
 When mentioning specific profiles, cite them as [#id] where id is the profile ID.
-Keep your response conversational and helpful. If this is a follow-up question in an ongoing conversation, reference the previous context.`,
+Keep your response conversational and helpful.`;
+
+    const messages: any[] = [
+      {
+        role: 'system',
+        content: systemPrompt,
       },
       // Include previous conversation history
       ...conversationHistory,

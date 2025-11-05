@@ -65,8 +65,9 @@ export default function Home() {
   // Conversation history
   const [conversationHistory, setConversationHistory] = useState<ChatMessage[]>([]);
 
-  // Results state
+  // Results state - stores ALL results from initial search
   const [results, setResults] = useState<Result[]>([]);
+  const [allResults, setAllResults] = useState<Result[]>([]); // Complete result set from database
 
   // UI state
   const [loading, setLoading] = useState(false);
@@ -87,6 +88,8 @@ export default function Home() {
     setSyncMsg('');
 
     try {
+      const isFirstQuery = allResults.length === 0;
+
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -101,6 +104,9 @@ export default function Home() {
             role: msg.role,
             content: msg.content,
           })),
+          // For refinement queries, send existing results to filter
+          isRefinement: !isFirstQuery,
+          existingResults: !isFirstQuery ? allResults : undefined,
         }),
       });
 
@@ -126,6 +132,12 @@ export default function Home() {
 
       setConversationHistory([...conversationHistory, userMessage, assistantMessage]);
       setResults(data.results || []);
+
+      // Store all results from initial search
+      if (isFirstQuery) {
+        setAllResults(data.results || []);
+      }
+
       setInput(''); // Clear input after successful search
     } catch (error) {
       console.error('Search error:', error);
@@ -147,6 +159,7 @@ export default function Home() {
     setState('');
     setConversationHistory([]);
     setResults([]);
+    setAllResults([]); // Clear stored results for fresh search
     setSyncMsg('Conversation cleared. New search started.');
 
     try {
