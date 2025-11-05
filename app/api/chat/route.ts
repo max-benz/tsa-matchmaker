@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
       maxAge = undefined,
       state = undefined,
       alpha = 0.6,
-      topK = 200, // Increased from 24 to return more matches for better conversational refinement
+      topK = 1000, // Return up to 1000 matches for comprehensive conversational refinement
       conversationHistory = [],
     } = body;
 
