@@ -5,8 +5,7 @@
 SELECT
   COUNT(*) as total_profiles,
   COUNT(*) FILTER (WHERE embedding IS NOT NULL) as has_embedding,
-  COUNT(*) FILTER (WHERE embedding_dirty = TRUE) as still_dirty,
-  COUNT(*) FILTER (WHERE embedding IS NOT NULL AND array_length(embedding::float[], 1) = 1536) as valid_dimension_count
+  COUNT(*) FILTER (WHERE embedding_dirty = TRUE) as still_dirty
 FROM singles_form_data;
 
 -- Sample a few embeddings to verify they look real
@@ -14,9 +13,9 @@ SELECT
   id,
   first_name,
   LEFT(searchable_text, 50) as text_sample,
-  array_length(embedding::float[], 1) as embedding_dimension,
   LEFT(embedding::text, 100) as embedding_preview,
-  embedding_updated_at
+  embedding_updated_at,
+  embedding_dirty
 FROM singles_form_data
 WHERE embedding IS NOT NULL
 LIMIT 5;
@@ -27,3 +26,12 @@ SELECT
   COUNT(*) as total_embeddings
 FROM singles_form_data
 WHERE embedding IS NOT NULL;
+
+-- Show when embeddings were created
+SELECT
+  DATE(embedding_updated_at) as date,
+  COUNT(*) as embeddings_created
+FROM singles_form_data
+WHERE embedding IS NOT NULL
+GROUP BY DATE(embedding_updated_at)
+ORDER BY date DESC;
