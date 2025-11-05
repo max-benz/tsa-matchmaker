@@ -40,7 +40,12 @@ interface SearchResult {
 
 export async function POST(request: NextRequest) {
   try {
+    console.log('=== Chat API Request Started ===');
     const body: SearchRequest = await request.json();
+    console.log('Request body parsed successfully');
+    console.log('Message:', body.message);
+    console.log('Is refinement:', body.isRefinement);
+    console.log('Existing results count:', body.existingResults?.length || 0);
 
     // Validate message
     if (!body.message || typeof body.message !== 'string' || body.message.trim().length === 0) {
@@ -109,6 +114,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Format results for LLM
+    console.log('Formatting results for LLM...');
     const formattedResults = searchResults.map((r) => {
       const locationParts = [r.city, r.state, r.country].filter(Boolean);
       const location = locationParts.length > 0 ? locationParts.join(', ') : 'Location not specified';
@@ -124,9 +130,10 @@ export async function POST(request: NextRequest) {
         score: r.final_score.toFixed(4),
       };
     });
+    console.log(`Formatted ${formattedResults.length} results`);
 
     // Generate LLM summary with conversation history
-    console.log('Generating LLM summary');
+    console.log('Generating LLM summary with OpenAI...');
     const systemPrompt = isRefinement
       ? `You are a helpful matchmaking assistant. The user has refined their previous search query.
 
@@ -181,8 +188,10 @@ Please provide a summary and refinement suggestions.`,
       temperature: 0.7,
       max_tokens: 500,
     });
+    console.log('OpenAI response received successfully');
 
     const answer = chatCompletion.choices[0]?.message?.content || 'Unable to generate summary.';
+    console.log('Extracted answer from OpenAI response');
 
     // Return results
     return NextResponse.json({
@@ -190,11 +199,16 @@ Please provide a summary and refinement suggestions.`,
       results: searchResults,
     });
   } catch (error) {
-    console.error('Error in chat endpoint:', error);
+    console.error('=== Error in chat endpoint ===');
+    console.error('Error type:', error?.constructor?.name);
+    console.error('Error message:', error instanceof Error ? error.message : 'Unknown error');
+    console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+    console.error('Full error object:', error);
+
     return NextResponse.json(
       {
         error: 'An error occurred while processing your request',
-        details: error instanceof Error ? error.message : 'Unknown error',
+        details: error instanceof Error ? error.message : String(error),
       },
       { status: 500 }
     );

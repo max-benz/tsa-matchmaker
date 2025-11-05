@@ -89,30 +89,38 @@ export default function Home() {
 
     try {
       const isFirstQuery = allResults.length === 0;
+      console.log('Starting search - isFirstQuery:', isFirstQuery, 'allResults count:', allResults.length);
+
+      const requestBody = {
+        message: input,
+        gender: gender || undefined,
+        minAge: minAge ? parseInt(minAge) : undefined,
+        maxAge: maxAge ? parseInt(maxAge) : undefined,
+        state: state || undefined,
+        topK: 10000, // Return entire database - scales automatically as database grows
+        conversationHistory: conversationHistory.map(msg => ({
+          role: msg.role,
+          content: msg.content,
+        })),
+        // For refinement queries, send existing results to filter
+        isRefinement: !isFirstQuery,
+        existingResults: !isFirstQuery ? allResults : undefined,
+      };
+
+      console.log('Request body prepared - sending refinement:', requestBody.isRefinement,
+                  'existingResults count:', requestBody.existingResults?.length || 0);
 
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message: input,
-          gender: gender || undefined,
-          minAge: minAge ? parseInt(minAge) : undefined,
-          maxAge: maxAge ? parseInt(maxAge) : undefined,
-          state: state || undefined,
-          topK: 10000, // Return entire database - scales automatically as database grows
-          conversationHistory: conversationHistory.map(msg => ({
-            role: msg.role,
-            content: msg.content,
-          })),
-          // For refinement queries, send existing results to filter
-          isRefinement: !isFirstQuery,
-          existingResults: !isFirstQuery ? allResults : undefined,
-        }),
+        body: JSON.stringify(requestBody),
       });
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || 'Search failed');
+        console.error('API Error Response:', error);
+        const errorMsg = error.details ? `${error.error}: ${error.details}` : (error.error || 'Search failed');
+        throw new Error(errorMsg);
       }
 
       const data = await response.json();
