@@ -481,65 +481,168 @@ export default function Home() {
                 </div>
               )}
 
-              {/* Profile Info - All Fields */}
-              <div className="space-y-6">
-                {Object.entries(selectedProfile.profile)
-                  .filter(([key, value]) => {
-                    // Skip internal/system fields and null/empty values
-                    const skipFields = [
-                      'id',
-                      'created_at',
-                      'updated_at',
-                      'embedding',
-                      'embedding_dirty',
-                      'embedding_updated_at',
-                      'embedding_version',
-                      'content_tsv',
-                      'searchable_text',
-                      'primary_image_url'
-                    ];
-                    return !skipFields.includes(key) && value !== null && value !== '';
-                  })
-                  .map(([key, value]) => {
-                    // Format the field name: snake_case to Title Case
-                    const formatFieldName = (str: string) => {
-                      return str
-                        .split('_')
-                        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-                        .join(' ');
-                    };
+              {/* Profile Info - Organized by Sections */}
+              <div className="space-y-8">
+                {(() => {
+                  const profile = selectedProfile.profile;
 
-                    // Format the value
-                    const formatValue = (val: any) => {
-                      if (typeof val === 'boolean') {
-                        return val ? 'Yes' : 'No';
-                      }
-                      if (val instanceof Date || (typeof val === 'string' && val.match(/^\d{4}-\d{2}-\d{2}/))) {
-                        try {
-                          const date = new Date(val);
-                          return date.toLocaleDateString('en-US', {
-                            year: 'numeric',
-                            month: 'long',
-                            day: 'numeric'
-                          });
-                        } catch {
-                          return String(val);
-                        }
-                      }
-                      return String(val);
-                    };
+                  // Helper functions
+                  const formatFieldName = (str: string) => {
+                    return str
+                      .split('_')
+                      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                      .join(' ');
+                  };
 
+                  const formatValue = (val: any) => {
+                    if (val === null || val === '') return null;
+                    if (typeof val === 'boolean') return val ? 'Yes' : 'No';
+                    if (val instanceof Date || (typeof val === 'string' && val.match(/^\d{4}-\d{2}-\d{2}/))) {
+                      try {
+                        const date = new Date(val);
+                        return date.toLocaleDateString('en-US', {
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric'
+                        });
+                      } catch {
+                        return String(val);
+                      }
+                    }
+                    return String(val);
+                  };
+
+                  const renderField = (label: string, value: any) => {
+                    const formattedValue = formatValue(value);
+                    if (!formattedValue) return null;
                     return (
-                      <div key={key} className="border-b border-gray-200 pb-4 last:border-b-0">
-                        <h4 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-2">
-                          {formatFieldName(key)}
-                        </h4>
-                        <p className="text-gray-900 whitespace-pre-wrap">
-                          {formatValue(value)}
-                        </p>
+                      <div key={label}>
+                        <h5 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-1">
+                          {label}
+                        </h5>
+                        <p className="text-gray-900 whitespace-pre-wrap">{formattedValue}</p>
                       </div>
                     );
-                  })}
+                  };
+
+                  const renderSection = (title: string, fields: Array<[string, any]>) => {
+                    const renderedFields = fields
+                      .map(([label, value]) => renderField(label, value))
+                      .filter(Boolean);
+
+                    if (renderedFields.length === 0) return null;
+
+                    return (
+                      <div className="border-b border-gray-200 pb-6 last:border-b-0">
+                        <h3 className="text-xl font-bold text-gray-900 mb-4">{title}</h3>
+                        <div className="space-y-4">
+                          {renderedFields}
+                        </div>
+                      </div>
+                    );
+                  };
+
+                  return (
+                    <>
+                      {/* Basic Information */}
+                      {renderSection('Basic Information', [
+                        ['Full Name', `${profile.first_name || ''} ${profile.last_name || ''}`.trim()],
+                        ['Gender', profile.gender],
+                        ['Age', profile.age_years],
+                        ['Date of Birth', profile.date_of_birth],
+                      ])}
+
+                      {/* Location */}
+                      {renderSection('Location', [
+                        ['City', profile.city],
+                        ['State', profile.state],
+                        ['Country', profile.country],
+                        ['Metropolitan Area', profile.metropolitan_area],
+                      ])}
+
+                      {/* About / Summary */}
+                      {renderSection('About', [
+                        ['Personal Summary', profile.personal_summary],
+                        ['About Me', profile.about_me],
+                        ['Bio', profile.bio],
+                        ['Notes', profile.notes],
+                      ])}
+
+                      {/* Physical Attributes */}
+                      {renderSection('Physical Attributes', [
+                        ['Height', profile.height],
+                        ['Weight', profile.weight],
+                        ['Body Type', profile.body_type],
+                        ['Eye Color', profile.eye_color],
+                        ['Hair Color', profile.hair_color],
+                        ['Ethnicity', profile.ethnicity],
+                        ['Race', profile.race],
+                      ])}
+
+                      {/* Lifestyle & Interests */}
+                      {renderSection('Lifestyle & Interests', [
+                        ['Occupation', profile.occupation],
+                        ['Education', profile.education],
+                        ['Lifestyle Interests', profile.lifestyle_interests],
+                        ['Physical Activities', profile.physical_activities],
+                        ['Hobbies', profile.hobbies],
+                        ['Interests', profile.interests],
+                      ])}
+
+                      {/* Preferences & Looking For */}
+                      {renderSection('Preferences', [
+                        ['Looking For', profile.looking_for],
+                        ['Relationship Goals', profile.relationship_goals],
+                        ['Preferences', profile.preferences],
+                      ])}
+
+                      {/* Religious & Values */}
+                      {renderSection('Religious & Values', [
+                        ['Religion', profile.religion],
+                        ['Religious Beliefs', profile.religious_beliefs],
+                        ['Political Views', profile.political_views],
+                        ['Values', profile.values],
+                      ])}
+
+                      {/* Family & Background */}
+                      {renderSection('Family & Background', [
+                        ['Has Children', profile.has_children],
+                        ['Wants Children', profile.wants_children],
+                        ['Family Background', profile.family_background],
+                      ])}
+
+                      {/* Contact Information */}
+                      {renderSection('Contact Information', [
+                        ['Email', profile.email],
+                        ['Phone', profile.phone],
+                        ['Phone Number', profile.phone_number],
+                      ])}
+
+                      {/* Other Fields - catch any remaining fields not covered above */}
+                      {(() => {
+                        const skipFields = [
+                          'id', 'created_at', 'updated_at', 'embedding', 'embedding_dirty',
+                          'embedding_updated_at', 'embedding_version', 'content_tsv',
+                          'searchable_text', 'primary_image_url', 'first_name', 'last_name',
+                          'gender', 'age_years', 'date_of_birth', 'city', 'state', 'country',
+                          'metropolitan_area', 'personal_summary', 'about_me', 'bio', 'notes',
+                          'height', 'weight', 'body_type', 'eye_color', 'hair_color', 'ethnicity',
+                          'race', 'occupation', 'education', 'lifestyle_interests',
+                          'physical_activities', 'hobbies', 'interests', 'looking_for',
+                          'relationship_goals', 'preferences', 'religion', 'religious_beliefs',
+                          'political_views', 'values', 'has_children', 'wants_children',
+                          'family_background', 'email', 'phone', 'phone_number'
+                        ];
+
+                        const otherFields = Object.entries(profile)
+                          .filter(([key, value]) => !skipFields.includes(key) && value !== null && value !== '')
+                          .map(([key, value]) => [formatFieldName(key), value] as [string, any]);
+
+                        return renderSection('Additional Information', otherFields);
+                      })()}
+                    </>
+                  );
+                })()}
               </div>
             </div>
           </div>
