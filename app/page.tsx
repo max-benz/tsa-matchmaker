@@ -443,17 +443,17 @@ export default function Home() {
           onClick={closeProfileModal}
         >
           <div
-            className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto"
+            className="bg-white rounded-2xl max-w-5xl w-full max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
-            <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center">
+            <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center z-10">
               <h2 className="text-2xl font-bold text-gray-900">
                 Profile Details
               </h2>
               <button
                 onClick={closeProfileModal}
-                className="text-gray-500 hover:text-gray-700 text-2xl"
+                className="text-gray-500 hover:text-gray-700 text-3xl leading-none"
               >
                 ×
               </button>
@@ -463,105 +463,83 @@ export default function Home() {
             <div className="p-6">
               {/* Images */}
               {selectedProfile.images && selectedProfile.images.length > 0 && (
-                <div className="mb-6">
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                <div className="mb-8">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                    Photos
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {selectedProfile.images.map((img: any, idx: number) => (
-                      <img
-                        key={idx}
-                        src={img.image_url}
-                        alt={`Photo ${idx + 1}`}
-                        className="w-full h-48 object-cover rounded-xl"
-                      />
+                      <div key={idx} className="relative bg-gray-100 rounded-xl overflow-hidden" style={{ minHeight: '400px' }}>
+                        <img
+                          src={img.image_url}
+                          alt={`Photo ${idx + 1}`}
+                          className="w-full h-full object-contain"
+                        />
+                      </div>
                     ))}
                   </div>
                 </div>
               )}
 
-              {/* Profile Info */}
-              <div className="space-y-4">
-                <div>
-                  <h3 className="text-xl font-semibold text-gray-900">
-                    {selectedProfile.profile.first_name}{' '}
-                    {selectedProfile.profile.last_name}
-                  </h3>
-                  <p className="text-gray-600">
-                    {selectedProfile.profile.age_years} years old •{' '}
-                    {selectedProfile.profile.gender}
-                  </p>
-                  <p className="text-gray-600">
-                    {[
-                      selectedProfile.profile.city,
-                      selectedProfile.profile.state,
-                      selectedProfile.profile.country,
-                    ]
-                      .filter(Boolean)
-                      .join(', ')}
-                  </p>
-                </div>
+              {/* Profile Info - All Fields */}
+              <div className="space-y-6">
+                {Object.entries(selectedProfile.profile)
+                  .filter(([key, value]) => {
+                    // Skip internal/system fields and null/empty values
+                    const skipFields = [
+                      'id',
+                      'created_at',
+                      'updated_at',
+                      'embedding',
+                      'embedding_dirty',
+                      'embedding_updated_at',
+                      'embedding_version',
+                      'content_tsv',
+                      'searchable_text',
+                      'primary_image_url'
+                    ];
+                    return !skipFields.includes(key) && value !== null && value !== '';
+                  })
+                  .map(([key, value]) => {
+                    // Format the field name: snake_case to Title Case
+                    const formatFieldName = (str: string) => {
+                      return str
+                        .split('_')
+                        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                        .join(' ');
+                    };
 
-                {selectedProfile.profile.personal_summary && (
-                  <div>
-                    <h4 className="font-semibold text-gray-900 mb-2">
-                      Personal Summary
-                    </h4>
-                    <p className="text-gray-700">
-                      {selectedProfile.profile.personal_summary}
-                    </p>
-                  </div>
-                )}
+                    // Format the value
+                    const formatValue = (val: any) => {
+                      if (typeof val === 'boolean') {
+                        return val ? 'Yes' : 'No';
+                      }
+                      if (val instanceof Date || (typeof val === 'string' && val.match(/^\d{4}-\d{2}-\d{2}/))) {
+                        try {
+                          const date = new Date(val);
+                          return date.toLocaleDateString('en-US', {
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric'
+                          });
+                        } catch {
+                          return String(val);
+                        }
+                      }
+                      return String(val);
+                    };
 
-                {selectedProfile.profile.occupation && (
-                  <div>
-                    <h4 className="font-semibold text-gray-900 mb-2">
-                      Occupation
-                    </h4>
-                    <p className="text-gray-700">
-                      {selectedProfile.profile.occupation}
-                    </p>
-                  </div>
-                )}
-
-                {selectedProfile.profile.lifestyle_interests && (
-                  <div>
-                    <h4 className="font-semibold text-gray-900 mb-2">
-                      Lifestyle & Interests
-                    </h4>
-                    <p className="text-gray-700">
-                      {selectedProfile.profile.lifestyle_interests}
-                    </p>
-                  </div>
-                )}
-
-                {selectedProfile.profile.physical_activities && (
-                  <div>
-                    <h4 className="font-semibold text-gray-900 mb-2">
-                      Physical Activities
-                    </h4>
-                    <p className="text-gray-700">
-                      {selectedProfile.profile.physical_activities}
-                    </p>
-                  </div>
-                )}
-
-                {selectedProfile.profile.notes && (
-                  <div>
-                    <h4 className="font-semibold text-gray-900 mb-2">Notes</h4>
-                    <p className="text-gray-700">
-                      {selectedProfile.profile.notes}
-                    </p>
-                  </div>
-                )}
-
-                {selectedProfile.profile.email && (
-                  <div>
-                    <h4 className="font-semibold text-gray-900 mb-2">
-                      Contact
-                    </h4>
-                    <p className="text-gray-700">
-                      {selectedProfile.profile.email}
-                    </p>
-                  </div>
-                )}
+                    return (
+                      <div key={key} className="border-b border-gray-200 pb-4 last:border-b-0">
+                        <h4 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-2">
+                          {formatFieldName(key)}
+                        </h4>
+                        <p className="text-gray-900 whitespace-pre-wrap">
+                          {formatValue(value)}
+                        </p>
+                      </div>
+                    );
+                  })}
               </div>
             </div>
           </div>
