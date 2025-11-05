@@ -400,10 +400,10 @@ export default function Home() {
                                   <img
                                     src={result.primary_image_url}
                                     alt={nameWithAge}
-                                    className="w-full h-56 object-cover"
+                                    className="w-full h-80 object-cover"
                                   />
                                 ) : (
-                                  <div className="w-full h-56 bg-gray-200 flex items-center justify-center">
+                                  <div className="w-full h-80 bg-gray-200 flex items-center justify-center">
                                     <span className="text-gray-400 text-sm">
                                       No image
                                     </span>
@@ -524,7 +524,7 @@ export default function Home() {
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {selectedProfile.images.map((img: any, idx: number) => (
-                      <div key={idx} className="relative bg-gray-100 rounded-xl overflow-hidden" style={{ minHeight: '400px' }}>
+                      <div key={idx} className="relative bg-gray-100 rounded-xl overflow-hidden" style={{ minHeight: '600px' }}>
                         <img
                           src={img.image_url}
                           alt={`Photo ${idx + 1}`}
