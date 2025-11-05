@@ -132,27 +132,37 @@ export async function POST(request: NextRequest) {
     });
     console.log(`Formatted ${formattedResults.length} results`);
 
+    // Limit results sent to OpenAI to avoid token overflow
+    // OpenAI has 128k token limit, sending thousands of profiles exceeds this
+    const MAX_RESULTS_FOR_AI = 100;
+    const resultsForAI = formattedResults.slice(0, MAX_RESULTS_FOR_AI);
+    console.log(`Sending ${resultsForAI.length} results to OpenAI (limited from ${formattedResults.length})`);
+
     // Generate LLM summary with conversation history
     console.log('Generating LLM summary with OpenAI...');
     const systemPrompt = isRefinement
       ? `You are a helpful matchmaking assistant. The user has refined their previous search query.
 
-Your task: Filter and analyze the existing ${searchResults.length} results based on the user's refinement request.
+Your task: Analyze the ${searchResults.length} total results and help filter them based on the user's refinement request.
+
+Note: For efficiency, you're seeing the top ${resultsForAI.length} results, but ${searchResults.length} total profiles were found.
 
 For refinement queries:
 1. Identify which profiles match the user's new criteria
 2. Explain how you filtered the results
-3. Highlight the best matches from the refined set
+3. Highlight the best matches from the set
 4. Suggest 1-2 ways to further refine or expand
 
 When mentioning specific profiles, cite them as [#id] where id is the profile ID.
 Keep your response conversational and focused on the refinement.`
       : `You are a helpful matchmaking assistant. Analyze search results and provide a concise summary.
 
+${formattedResults.length > MAX_RESULTS_FOR_AI ? `Note: ${searchResults.length} total profiles were found. For efficiency, you're analyzing the top ${resultsForAI.length} matches.` : ''}
+
 Include:
-1. A brief overview of the results found
-2. Key highlights about the matches
-3. 2-3 specific refinement suggestions to help narrow or expand the search
+1. A brief overview of the results found (mention total count)
+2. Key highlights about the top matches
+3. 2-3 specific refinement suggestions to help narrow the search
 
 When mentioning specific profiles, cite them as [#id] where id is the profile ID.
 Keep your response conversational and helpful.`;
@@ -175,8 +185,9 @@ ${minAge ? `- Min Age: ${minAge}` : ''}
 ${maxAge ? `- Max Age: ${maxAge}` : ''}
 ${state ? `- State: ${state}` : ''}
 
-Results (${formattedResults.length} profiles):
-${JSON.stringify(formattedResults, null, 2)}
+Total results found: ${searchResults.length}
+Analyzing top ${resultsForAI.length} matches:
+${JSON.stringify(resultsForAI, null, 2)}
 
 Please provide a summary and refinement suggestions.`,
       },
