@@ -5,6 +5,11 @@ import { openai, embed } from '@/lib/llm';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
+interface ChatMessage {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
 interface SearchRequest {
   message: string;
   gender?: string;
@@ -13,6 +18,7 @@ interface SearchRequest {
   state?: string;
   alpha?: number;
   topK?: number;
+  conversationHistory?: ChatMessage[];
 }
 
 interface SearchResult {
@@ -49,6 +55,7 @@ export async function POST(request: NextRequest) {
       state = undefined,
       alpha = 0.6,
       topK = 24,
+      conversationHistory = [],
     } = body;
 
     // Generate embedding for the search query
@@ -105,25 +112,26 @@ export async function POST(request: NextRequest) {
       };
     });
 
-    // Generate LLM summary
+    // Generate LLM summary with conversation history
     console.log('Generating LLM summary');
-    const chatCompletion = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
-      messages: [
-        {
-          role: 'system',
-          content: `You are a helpful matchmaking assistant. Analyze search results and provide a concise summary.
+    const messages: any[] = [
+      {
+        role: 'system',
+        content: `You are a helpful matchmaking assistant. Analyze search results and provide a concise summary.
 Include:
 1. A brief overview of the results found
 2. Key highlights about the matches
 3. 2-3 specific refinement suggestions to help narrow or expand the search
 
 When mentioning specific profiles, cite them as [#id] where id is the profile ID.
-Keep your response conversational and helpful.`,
-        },
-        {
-          role: 'user',
-          content: `Query: "${message}"
+Keep your response conversational and helpful. If this is a follow-up question in an ongoing conversation, reference the previous context.`,
+      },
+      // Include previous conversation history
+      ...conversationHistory,
+      // Add current query
+      {
+        role: 'user',
+        content: `Query: "${message}"
 
 Filters applied:
 ${gender ? `- Gender: ${gender}` : ''}
@@ -135,8 +143,12 @@ Results (${formattedResults.length} profiles):
 ${JSON.stringify(formattedResults, null, 2)}
 
 Please provide a summary and refinement suggestions.`,
-        },
-      ],
+      },
+    ];
+
+    const chatCompletion = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages,
       temperature: 0.7,
       max_tokens: 500,
     });
