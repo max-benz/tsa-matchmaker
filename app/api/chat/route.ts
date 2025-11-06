@@ -124,7 +124,7 @@ export async function POST(request: NextRequest) {
       // Validate state filtering
       if (searchResults.length > 0 && states && states.length > 0) {
         const resultStates = searchResults.map(r => r.state).filter(Boolean);
-        const uniqueStates = [...new Set(resultStates)];
+        const uniqueStates = Array.from(new Set(resultStates));
         console.log(`State validation: Requested states [${states.join(', ')}], Got states [${uniqueStates.join(', ')}]`);
 
         // Check if any results are from wrong states
