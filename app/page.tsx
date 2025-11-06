@@ -451,7 +451,7 @@ export default function Home() {
                   required
                 />
               </div>
-              <p className="text-xs text-gray-500 mt-1">5'0" = 60", 6'0" = 72"</p>
+              <p className="text-xs text-gray-500 mt-1">Example: 5 feet = 60 inches, 6 feet = 72 inches</p>
             </div>
 
             {/* Gender (Optional) */}
