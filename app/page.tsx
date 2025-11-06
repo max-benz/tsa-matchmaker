@@ -191,6 +191,18 @@ export default function Home() {
         setAllResults(data.results || []);
       }
 
+      // Show helpful message if no results found
+      if (!data.results || data.results.length === 0) {
+        console.warn('No results found with filters:', {
+          states,
+          minAge: minAge,
+          maxAge: maxAge,
+          minHeight: minHeight,
+          maxHeight: maxHeight,
+          gender
+        });
+      }
+
       setInput(''); // Clear input after successful search
     } catch (error) {
       console.error('Search error:', error);
