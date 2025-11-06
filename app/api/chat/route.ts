@@ -15,7 +15,9 @@ interface SearchRequest {
   gender?: string;
   minAge?: number;
   maxAge?: number;
-  state?: string;
+  states?: string[];  // Changed from state to states (array)
+  minHeight?: number;  // New: minimum height in inches
+  maxHeight?: number;  // New: maximum height in inches
   alpha?: number;
   topK?: number;
   conversationHistory?: ChatMessage[];
@@ -60,7 +62,9 @@ export async function POST(request: NextRequest) {
       gender = undefined,
       minAge = undefined,
       maxAge = undefined,
-      state = undefined,
+      states = [],  // Changed from state to states (array)
+      minHeight = undefined,  // New: minimum height
+      maxHeight = undefined,  // New: maximum height
       alpha = 0.6,
       topK = 10000, // Return entire database - scales automatically as database grows
       conversationHistory = [],
@@ -85,7 +89,9 @@ export async function POST(request: NextRequest) {
         gender,
         minAge,
         maxAge,
-        state,
+        states,
+        minHeight,
+        maxHeight,
         alpha,
         topK,
       });
@@ -98,7 +104,9 @@ export async function POST(request: NextRequest) {
         p_gender: gender || null,
         p_min_age: minAge || null,
         p_max_age: maxAge || null,
-        p_state: state || null,
+        p_states: states && states.length > 0 ? states : null,  // Pass array or null
+        p_min_height: minHeight || null,
+        p_max_height: maxHeight || null,
       });
 
       if (searchError) {
@@ -183,7 +191,9 @@ Filters applied:
 ${gender ? `- Gender: ${gender}` : ''}
 ${minAge ? `- Min Age: ${minAge}` : ''}
 ${maxAge ? `- Max Age: ${maxAge}` : ''}
-${state ? `- State: ${state}` : ''}
+${states && states.length > 0 ? `- States: ${states.join(', ')}` : ''}
+${minHeight ? `- Min Height: ${minHeight} inches` : ''}
+${maxHeight ? `- Max Height: ${maxHeight} inches` : ''}
 
 Total results found: ${searchResults.length}
 Analyzing top ${resultsForAI.length} matches:
