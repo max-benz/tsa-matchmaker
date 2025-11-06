@@ -119,6 +119,18 @@ export async function POST(request: NextRequest) {
 
       searchResults = results || [];
       console.log(`Found ${searchResults.length} results from database search`);
+
+      // Debug: Log filter details if no results found
+      if (searchResults.length === 0) {
+        console.warn('⚠️ NO RESULTS FOUND - Check if filters are too restrictive:');
+        console.warn('Filters used:', {
+          states: states,
+          minAge, maxAge,
+          minHeight, maxHeight,
+          gender
+        });
+        console.warn('Consider: Either data does not match these exact filters, or the query text has no matches');
+      }
     }
 
     // Format results for LLM
