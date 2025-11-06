@@ -28,6 +28,15 @@ type ProfileDetails = {
   images: any[];
 };
 
+// US States list
+const US_STATES = [
+  'AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA',
+  'HI', 'ID', 'IL', 'IN', 'IA', 'KS', 'KY', 'LA', 'ME', 'MD',
+  'MA', 'MI', 'MN', 'MS', 'MO', 'MT', 'NE', 'NV', 'NH', 'NJ',
+  'NM', 'NY', 'NC', 'ND', 'OH', 'OK', 'OR', 'PA', 'RI', 'SC',
+  'SD', 'TN', 'TX', 'UT', 'VT', 'VA', 'WA', 'WV', 'WI', 'WY'
+];
+
 // Helper function to get status color
 const getStatusColor = (status: string | null | undefined) => {
   if (!status) return { bg: 'bg-gray-100', text: 'text-gray-700', border: 'border-gray-300' };
@@ -60,7 +69,9 @@ export default function Home() {
   const [gender, setGender] = useState('');
   const [minAge, setMinAge] = useState('');
   const [maxAge, setMaxAge] = useState('');
-  const [state, setState] = useState('');
+  const [states, setStates] = useState<string[]>([]); // Multi-select states (REQUIRED)
+  const [minHeight, setMinHeight] = useState(''); // In inches (REQUIRED)
+  const [maxHeight, setMaxHeight] = useState(''); // In inches (REQUIRED)
 
   // Conversation history
   const [conversationHistory, setConversationHistory] = useState<ChatMessage[]>([]);
@@ -79,8 +90,40 @@ export default function Home() {
   const [loadingProfile, setLoadingProfile] = useState(false);
 
   const search = async () => {
+    // Validate required fields
     if (!input.trim()) {
       alert('Please enter a search query');
+      return;
+    }
+
+    if (states.length === 0) {
+      alert('Please select at least one state');
+      return;
+    }
+
+    if (!minAge || !maxAge) {
+      alert('Please enter both minimum and maximum age');
+      return;
+    }
+
+    if (!minHeight || !maxHeight) {
+      alert('Please enter both minimum and maximum height');
+      return;
+    }
+
+    // Validate age range
+    const minAgeNum = parseInt(minAge);
+    const maxAgeNum = parseInt(maxAge);
+    if (minAgeNum > maxAgeNum) {
+      alert('Minimum age cannot be greater than maximum age');
+      return;
+    }
+
+    // Validate height range
+    const minHeightNum = parseInt(minHeight);
+    const maxHeightNum = parseInt(maxHeight);
+    if (minHeightNum > maxHeightNum) {
+      alert('Minimum height cannot be greater than maximum height');
       return;
     }
 
@@ -96,7 +139,9 @@ export default function Home() {
         gender: gender || undefined,
         minAge: minAge ? parseInt(minAge) : undefined,
         maxAge: maxAge ? parseInt(maxAge) : undefined,
-        state: state || undefined,
+        states: states, // Multi-select states (required)
+        minHeight: minHeight ? parseInt(minHeight) : undefined,
+        maxHeight: maxHeight ? parseInt(maxHeight) : undefined,
         topK: 10000, // Return entire database - scales automatically as database grows
         conversationHistory: conversationHistory.map(msg => ({
           role: msg.role,
@@ -164,7 +209,9 @@ export default function Home() {
     setGender('');
     setMinAge('');
     setMaxAge('');
-    setState('');
+    setStates([]);
+    setMinHeight('');
+    setMaxHeight('');
     setConversationHistory([]);
     setResults([]);
     setAllResults([]); // Clear stored results for fresh search
@@ -302,8 +349,112 @@ export default function Home() {
             </div>
           </div>
 
+          {/* Required Filters Notice */}
+          <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-xl text-blue-800 text-sm">
+            <strong>Required filters:</strong> You must select at least one state, age range, and height range before searching.
+          </div>
+
           {/* Filters */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
+            {/* States - Multi-select (REQUIRED) */}
+            <div className="lg:col-span-1">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                States <span className="text-red-500">*</span>
+              </label>
+              <select
+                multiple
+                value={states}
+                onChange={(e) => {
+                  const selected = Array.from(e.target.selectedOptions, option => option.value);
+                  setStates(selected);
+                }}
+                className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent h-32"
+                disabled={loading}
+              >
+                {US_STATES.map((state) => (
+                  <option key={state} value={state}>
+                    {state}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-gray-500 mt-1">Hold Ctrl/Cmd to select multiple</p>
+              {states.length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-1">
+                  {states.map((state) => (
+                    <span
+                      key={state}
+                      className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full"
+                    >
+                      {state}
+                      <button
+                        onClick={() => setStates(states.filter(s => s !== state))}
+                        className="hover:text-blue-600"
+                        disabled={loading}
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Age Range (REQUIRED) */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Age Range <span className="text-red-500">*</span>
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                <input
+                  type="number"
+                  value={minAge}
+                  onChange={(e) => setMinAge(e.target.value)}
+                  placeholder="Min (e.g., 25)"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  disabled={loading}
+                  required
+                />
+                <input
+                  type="number"
+                  value={maxAge}
+                  onChange={(e) => setMaxAge(e.target.value)}
+                  placeholder="Max (e.g., 35)"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  disabled={loading}
+                  required
+                />
+              </div>
+            </div>
+
+            {/* Height Range in inches (REQUIRED) */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Height Range (inches) <span className="text-red-500">*</span>
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                <input
+                  type="number"
+                  value={minHeight}
+                  onChange={(e) => setMinHeight(e.target.value)}
+                  placeholder="Min (e.g., 60)"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  disabled={loading}
+                  required
+                />
+                <input
+                  type="number"
+                  value={maxHeight}
+                  onChange={(e) => setMaxHeight(e.target.value)}
+                  placeholder="Max (e.g., 72)"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  disabled={loading}
+                  required
+                />
+              </div>
+              <p className="text-xs text-gray-500 mt-1">5'0" = 60", 6'0" = 72"</p>
+            </div>
+
+            {/* Gender (Optional) */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Gender
@@ -319,45 +470,6 @@ export default function Home() {
                 <option value="Female">Female</option>
                 <option value="Other">Other</option>
               </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Min Age
-              </label>
-              <input
-                type="number"
-                value={minAge}
-                onChange={(e) => setMinAge(e.target.value)}
-                placeholder="e.g., 25"
-                className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                disabled={loading}
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Max Age
-              </label>
-              <input
-                type="number"
-                value={maxAge}
-                onChange={(e) => setMaxAge(e.target.value)}
-                placeholder="e.g., 35"
-                className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                disabled={loading}
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                State
-              </label>
-              <input
-                type="text"
-                value={state}
-                onChange={(e) => setState(e.target.value)}
-                placeholder="e.g., CO"
-                className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                disabled={loading}
-              />
             </div>
           </div>
 
