@@ -95,6 +95,7 @@ export async function POST(request: NextRequest) {
         alpha,
         topK,
       });
+      console.log(`State filter: Searching for profiles in states: [${states?.join(', ')}]`);
 
       const { data: results, error: searchError } = await supabase.rpc('hybrid_search_singles', {
         p_query_text: message,
@@ -120,6 +121,22 @@ export async function POST(request: NextRequest) {
       searchResults = results || [];
       console.log(`Found ${searchResults.length} results from database search`);
 
+      // Validate state filtering
+      if (searchResults.length > 0 && states && states.length > 0) {
+        const resultStates = searchResults.map(r => r.state).filter(Boolean);
+        const uniqueStates = [...new Set(resultStates)];
+        console.log(`State validation: Requested states [${states.join(', ')}], Got states [${uniqueStates.join(', ')}]`);
+
+        // Check if any results are from wrong states
+        const wrongStateResults = searchResults.filter(r =>
+          r.state && !states.some(s => s.toUpperCase() === r.state.toUpperCase())
+        );
+        if (wrongStateResults.length > 0) {
+          console.warn(`⚠️ Found ${wrongStateResults.length} results from states NOT in filter!`);
+          console.warn('Wrong states:', wrongStateResults.slice(0, 5).map(r => `ID ${r.id}: ${r.state}`));
+        }
+      }
+
       // Validate results contain search keywords (for quality control)
       if (searchResults.length > 0) {
         const keywords = message.toLowerCase().split(/\s+/).filter(w => w.length > 3);
@@ -130,7 +147,7 @@ export async function POST(request: NextRequest) {
         searchResults.slice(0, 3).forEach((r, i) => {
           const textToSearch = `${r.personal_summary || ''} ${r.first_name || ''} ${r.last_name || ''}`.toLowerCase();
           const matchedKeywords = keywords.filter(k => textToSearch.includes(k));
-          console.log(`  Result ${i + 1} (ID: ${r.id}): Matched keywords: [${matchedKeywords.join(', ')}]`);
+          console.log(`  Result ${i + 1} (ID: ${r.id}, State: ${r.state}): Matched keywords: [${matchedKeywords.join(', ')}]`);
         });
       }
 
