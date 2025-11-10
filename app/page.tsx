@@ -66,7 +66,6 @@ const getStatusColor = (status: string | null | undefined) => {
 export default function Home() {
   // Search state
   const [input, setInput] = useState('');
-  const [gender, setGender] = useState('');
   const [minAge, setMinAge] = useState('');
   const [maxAge, setMaxAge] = useState('');
   const [states, setStates] = useState<string[]>([]); // Multi-select states (REQUIRED)
@@ -136,7 +135,6 @@ export default function Home() {
 
       const requestBody = {
         message: input,
-        gender: gender || undefined,
         minAge: minAge ? parseInt(minAge) : undefined,
         maxAge: maxAge ? parseInt(maxAge) : undefined,
         states: states, // Multi-select states (required)
@@ -198,8 +196,7 @@ export default function Home() {
           minAge: minAge,
           maxAge: maxAge,
           minHeight: minHeight,
-          maxHeight: maxHeight,
-          gender
+          maxHeight: maxHeight
         });
       }
 
@@ -218,7 +215,6 @@ export default function Home() {
 
   const reset = async () => {
     setInput('');
-    setGender('');
     setMinAge('');
     setMaxAge('');
     setStates([]);
@@ -464,24 +460,6 @@ export default function Home() {
                 />
               </div>
               <p className="text-xs text-gray-500 mt-1">Example: 5 feet = 60 inches, 6 feet = 72 inches</p>
-            </div>
-
-            {/* Gender (Optional) */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Gender
-              </label>
-              <select
-                value={gender}
-                onChange={(e) => setGender(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                disabled={loading}
-              >
-                <option value="">Any</option>
-                <option value="Male">Male</option>
-                <option value="Female">Female</option>
-                <option value="Other">Other</option>
-              </select>
             </div>
           </div>
 
