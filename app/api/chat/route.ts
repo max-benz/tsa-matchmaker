@@ -65,7 +65,7 @@ export async function POST(request: NextRequest) {
       states = [],  // Changed from state to states (array)
       minHeight = undefined,  // New: minimum height
       maxHeight = undefined,  // New: maximum height
-      alpha = 0.6,
+      alpha = 0.8,  // Increased from 0.6 to 0.8 to favor exact text matches over semantic similarity
       topK = 10000, // Return entire database - scales automatically as database grows
       conversationHistory = [],
       isRefinement = false,
@@ -95,6 +95,7 @@ export async function POST(request: NextRequest) {
         alpha,
         topK,
       });
+      console.log(`State filter: Searching for profiles in states: [${states?.join(', ')}]`);
 
       const { data: results, error: searchError } = await supabase.rpc('hybrid_search_singles', {
         p_query_text: message,
@@ -119,6 +120,37 @@ export async function POST(request: NextRequest) {
 
       searchResults = results || [];
       console.log(`Found ${searchResults.length} results from database search`);
+
+      // Validate state filtering
+      if (searchResults.length > 0 && states && states.length > 0) {
+        const resultStates = searchResults.map(r => r.state).filter(Boolean);
+        const uniqueStates = Array.from(new Set(resultStates));
+        console.log(`State validation: Requested states [${states.join(', ')}], Got states [${uniqueStates.join(', ')}]`);
+
+        // Check if any results are from wrong states
+        const wrongStateResults = searchResults.filter(r => {
+          if (!r.state) return false;
+          return !states.some(s => s.toUpperCase() === r.state!.toUpperCase());
+        });
+        if (wrongStateResults.length > 0) {
+          console.warn(`⚠️ Found ${wrongStateResults.length} results from states NOT in filter!`);
+          console.warn('Wrong states:', wrongStateResults.slice(0, 5).map(r => `ID ${r.id}: ${r.state}`));
+        }
+      }
+
+      // Validate results contain search keywords (for quality control)
+      if (searchResults.length > 0) {
+        const keywords = message.toLowerCase().split(/\s+/).filter(w => w.length > 3);
+        console.log(`Validating results contain keywords: ${keywords.join(', ')}`);
+
+        // Log sample of top results for debugging
+        console.log('Sample of top 3 results:');
+        searchResults.slice(0, 3).forEach((r, i) => {
+          const textToSearch = `${r.personal_summary || ''} ${r.first_name || ''} ${r.last_name || ''}`.toLowerCase();
+          const matchedKeywords = keywords.filter(k => textToSearch.includes(k));
+          console.log(`  Result ${i + 1} (ID: ${r.id}, State: ${r.state}): Matched keywords: [${matchedKeywords.join(', ')}]`);
+        });
+      }
 
       // Debug: Log filter details if no results found
       if (searchResults.length === 0) {
@@ -167,6 +199,8 @@ Your task: Analyze the ${searchResults.length} total results and help filter the
 
 Note: For efficiency, you're seeing the top ${resultsForAI.length} results, but ${searchResults.length} total profiles were found.
 
+IMPORTANT: Only highlight profiles that ACTUALLY match the user's specific criteria. If they search for "asian", only mention profiles with Asian ethnicity. Be strict about matching.
+
 For refinement queries:
 1. Identify which profiles match the user's new criteria
 2. Explain how you filtered the results
@@ -179,10 +213,15 @@ Keep your response conversational and focused on the refinement.`
 
 ${formattedResults.length > MAX_RESULTS_FOR_AI ? `Note: ${searchResults.length} total profiles were found. For efficiency, you're analyzing the top ${resultsForAI.length} matches.` : ''}
 
+CRITICAL: Only recommend profiles that ACTUALLY match the user's search criteria.
+- If they search "asian", only highlight profiles that mention Asian ethnicity
+- If they search "yoga", only highlight profiles that mention yoga or similar activities
+- Be strict about matching - don't recommend profiles based on loose semantic similarity
+
 Include:
 1. A brief overview of the results found (mention total count)
-2. Key highlights about the top matches
-3. 2-3 specific refinement suggestions to help narrow the search
+2. Key highlights about profiles that MATCH the criteria
+3. If few/no profiles match, be honest about it and suggest broadening the search
 
 When mentioning specific profiles, cite them as [#id] where id is the profile ID.
 Keep your response conversational and helpful.`;
