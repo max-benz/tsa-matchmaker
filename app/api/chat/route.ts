@@ -128,9 +128,10 @@ export async function POST(request: NextRequest) {
         console.log(`State validation: Requested states [${states.join(', ')}], Got states [${uniqueStates.join(', ')}]`);
 
         // Check if any results are from wrong states
-        const wrongStateResults = searchResults.filter(r =>
-          r.state && !states.some(s => s.toUpperCase() === r.state.toUpperCase())
-        );
+        const wrongStateResults = searchResults.filter(r => {
+          if (!r.state) return false;
+          return !states.some(s => s.toUpperCase() === r.state!.toUpperCase());
+        });
         if (wrongStateResults.length > 0) {
           console.warn(`⚠️ Found ${wrongStateResults.length} results from states NOT in filter!`);
           console.warn('Wrong states:', wrongStateResults.slice(0, 5).map(r => `ID ${r.id}: ${r.state}`));
